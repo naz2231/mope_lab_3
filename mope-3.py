@@ -1,5 +1,19 @@
 import numpy as np
+from scipy.stats import t,f
 
+def table_student(prob, f3):
+    x_vec = [i*0.0001 for i in range(int(5/0.0001))]
+    par = 0.5 + prob/0.1*0.05
+    for i in x_vec:
+        if abs(t.cdf(i, f3) - par) < 0.000005:
+            return i
+
+
+def table_fisher(prob, d, f3):
+    x_vec = [i*0.001 for i in range(int(10/0.001))]
+    for i in x_vec:
+        if abs(f.cdf(i, 4-d, f3)-prob) < 0.0001:
+            return i
 
 def make_norm_plan_matrix(plan_matrix, matrix_of_min_and_max_x):
     X0 = np.mean(matrix_with_min_max_x, axis=1)
@@ -11,10 +25,11 @@ def make_norm_plan_matrix(plan_matrix, matrix_of_min_and_max_x):
 
 
 def cochran_check(Y_matrix):
+    fisher = table_fisher(0.95, 1, (m - 1) * 4)
     mean_Y = np.mean(Y_matrix, axis=1)
     dispersion_Y = np.mean((Y_matrix.T - mean_Y) ** 2, axis=0)
     Gp = np.max(dispersion_Y) / (np.sum(dispersion_Y))
-    if Gp < 0.5598:
+    if Gp < fisher/(fisher+(m-1)-2):
         return True
     return False
 
@@ -25,8 +40,9 @@ def students_t_test(norm_matrix, Y_matrix):
     mean_dispersion = np.mean(dispersion_Y)
     sigma = np.sqrt(mean_dispersion / (N * m))
     betta = np.mean(norm_matrix.T * mean_Y, axis=1)
+    f3 = (m - 1) * 4
     t = np.abs(betta) / sigma
-    return np.where(t > 2.086)
+    return np.where(t > table_student(0.95, f3))
 
 
 def phisher_criterion(Y_matrix, d):
@@ -35,7 +51,8 @@ def phisher_criterion(Y_matrix, d):
     Sad = m / (N - d) * np.mean(check1 - mean_Y)
     mean_dispersion = np.mean(np.mean((Y_matrix.T - mean_Y) ** 2, axis=0))
     Fp = Sad / mean_dispersion
-    if Fp > 4.4:
+    f3 = (m - 1) * 4
+    if Fp > table_fisher(0.95, d, f3):
         return False
     return True
 
